@@ -10,6 +10,7 @@ import type { PromptMode } from "../shell/PromptModeToggle";
 
 export type GenerateStatus = "idle" | "rendering" | "uploading" | "generating";
 export interface GeneratedVideo extends AnimationResult { signature: string }
+export interface SourcePreview { blob: Blob; container: "mp4" | "webm"; signature: string }
 
 interface GenerateState {
   /** Null until the user picks one, so it follows the subject's size. */
@@ -19,7 +20,7 @@ interface GenerateState {
   promptMode: PromptMode; rawPrompt: string;
   /** The raw prompt couldn't be split back into the fields when formatted mode was chosen. */
   unformattable: boolean;
-  status: GenerateStatus; progress: number | null; job: JobSnapshot | null;
+  status: GenerateStatus; progress: number | null; job: JobSnapshot | null; sourcePreview: SourcePreview | null;
   result: GeneratedVideo | null; view: "source" | "result"; error: string | null; notice: string | null;
   setEdgeFreedom: (edgeFreedom: number | null) => void; setSeed: (seed: string) => void;
   /** null follows the generated main prompt or sound effects. */
@@ -53,7 +54,7 @@ let controller: AbortController | null = null;
 export const useGenerateStore = create<GenerateState>((set, get) => ({
   edgeFreedom: null, seed: "", prompt: null, soundEffects: null, music: "",
   promptMode: "formatted", rawPrompt: "", unformattable: false,
-  status: "idle", progress: null, job: null, result: null, view: "source", error: null, notice: null,
+  status: "idle", progress: null, job: null, sourcePreview: null, result: null, view: "source", error: null, notice: null,
   setEdgeFreedom: edgeFreedom => set({ edgeFreedom: edgeFreedom === null ? null : Math.min(EDGE_FREEDOM.max, Math.max(EDGE_FREEDOM.min, Math.round(edgeFreedom / EDGE_FREEDOM.step) * EDGE_FREEDOM.step)) }),
   setSeed: seed => set({ seed }),
   setPrompt: prompt => set({ prompt }),
@@ -95,11 +96,11 @@ export const useGenerateStore = create<GenerateState>((set, get) => ({
     }
     controller = new AbortController();
     const { signal } = controller;
-    set({ status: "rendering", progress: 0, error: null, notice: null, job: null });
+    set({ status: "rendering", progress: 0, error: null, notice: null, job: null, sourcePreview: null });
     try {
       const videos = await renderMotionVideos(inputs.layers, inputs.motion, inputs.size, value => set({ progress: value }), signal);
       signal.throwIfAborted();
-      set({ status: "uploading", progress: null });
+      set({ status: "uploading", progress: null, sourcePreview: { blob: videos.reference, container: videos.container, signature: inputs.signature } });
       const request: AnimateRequest = { imageId: inputs.image.id, maskId: inputs.mask.id, plateId: inputs.isolation.plate.id,
         ...inputs.size, frames: inputs.motion.frames, prompt: inputs.prompt, edgeFreedom: inputs.edgeFreedom, ...(seed === undefined ? {} : { seed }) };
       const form = new FormData();

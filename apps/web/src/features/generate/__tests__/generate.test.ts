@@ -203,6 +203,16 @@ describe("generate guards", () => {
     expect(request.prompt).toContain("overall_soundscape: Soft rolling sounds.");
     expect(request.prompt).toContain("non_diegetic_music: Quiet piano music.");
   });
+  it("keeps the rendered reference preview available for download", async () => {
+    vi.mocked(renderMotionVideos).mockResolvedValue(videos);
+    vi.mocked(apiRequest).mockResolvedValue(queued);
+    vi.mocked(watchJob).mockResolvedValue({ ...queued, status: "cancelled" });
+
+    await useGenerateStore.getState().generate();
+
+    expect(useGenerateStore.getState().sourcePreview).toMatchObject({ blob: videos.reference, container: "mp4" });
+    expect(useGenerateStore.getState().sourcePreview?.signature).toBe(resolveInputs(currentParts(settings))!.signature);
+  });
   it("defaults edge freedom to automatic and snaps a chosen one to 4 px steps from 0 to 64", () => {
     expect(useGenerateStore.getState().edgeFreedom).toBeNull();
     for (const [input, expected] of [[-8, 0], [0, 0], [5, 4], [30, 32], [64, 64], [80, 64]]) {

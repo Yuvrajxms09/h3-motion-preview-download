@@ -88,6 +88,8 @@ reference and mask videos in a Web Worker, encodes exactly the clip's
 frame count with mediabunny (H.264 MP4, or VP9 WebM where H.264 isn't available),
 uploads them with the start frame and runs the animate workflow. **Source |
 Result** switches between the frames H3 receives and the generated video.
+After rendering, **Download preview** saves the deterministic source/reference
+video sent to H3; **Download video** saves the generated result.
 **Main prompt** is always visible and starts with the generated subject and path
 description. Edit it to change the visual instructions. **Advanced** holds the
 fixed seed, **Sound effects

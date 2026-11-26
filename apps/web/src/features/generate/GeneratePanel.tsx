@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, LinearProgress, Slider, Stack, TextField, Tooltip, Typography } from "@mui/material";
 import { EDGE_FREEDOM } from "@h3-motion/shared";
 import { useGenerationInputs } from "./inputs";
@@ -26,10 +26,22 @@ export function GeneratePanel({ example = false }: { example?: boolean }) {
   const job = useGenerateStore(s => s.job);
   const error = useGenerateStore(s => s.error);
   const notice = useGenerateStore(s => s.notice);
+  const sourcePreview = useGenerateStore(s => s.sourcePreview);
   const { setEdgeFreedom, setSeed, setPrompt, setSoundEffects, setMusic, setPromptMode, setRawPrompt, resetPrompt, keepRawPrompt,
     generate, cancel, clearError } = useGenerateStore.getState();
   const inputs = useGenerationInputs(usePromptSettings());
   const result = useCurrentResult();
+  const currentSourcePreview = sourcePreview && sourcePreview.signature === inputs?.signature ? sourcePreview : null;
+  const [sourcePreviewUrl, setSourcePreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!currentSourcePreview) {
+      setSourcePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(currentSourcePreview.blob);
+    setSourcePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [currentSourcePreview]);
   const busy = status !== "idle";
   const showPromptHint = example && !promptHintDismissed && !busy && !!inputs && !result && promptMode === "formatted";
   const showGenerateHint = example && !generateHintDismissed && !busy && !!inputs?.prompt && !result;
@@ -74,12 +86,21 @@ export function GeneratePanel({ example = false }: { example?: boolean }) {
     </ExampleHint>}
     {error && <Alert severity="error" onClose={clearError}>{error}</Alert>}
     {notice && !busy && <Typography role="status" variant="body2" color="text.secondary">{notice}</Typography>}
-    {result && <Stack spacing={1}>
-      <Typography variant="overline" color="text.secondary">Output</Typography>
-      <Stack direction="row" gap={1} flexWrap="wrap">
-        <Button variant="outlined" component="a" href={result.video.url} download="h3-motion.mp4">Download video</Button>
-        <Button disabled={busy} onClick={() => setSeed(String(result.seed))}>Reuse seed</Button>
-      </Stack>
+    {(sourcePreviewUrl || result) && <Stack spacing={1}>
+      {sourcePreviewUrl && <>
+        <Typography variant="overline" color="text.secondary">Source preview</Typography>
+        <Button variant="outlined" component="a" href={sourcePreviewUrl}
+          download={`h3-motion-preview.${currentSourcePreview?.container === "webm" ? "webm" : "mp4"}`}>
+          Download preview
+        </Button>
+      </>}
+      {result && <>
+        <Typography variant="overline" color="text.secondary">Output</Typography>
+        <Stack direction="row" gap={1} flexWrap="wrap">
+          <Button variant="outlined" component="a" href={result.video.url} download="h3-motion.mp4">Download video</Button>
+          <Button disabled={busy} onClick={() => setSeed(String(result.seed))}>Reuse seed</Button>
+        </Stack>
+      </>}
     </Stack>}
     <Accordion disableGutters elevation={0} sx={{ bgcolor: "transparent", border: "1px solid", borderColor: "divider", borderRadius: 1, "&::before": { display: "none" } }}>
       <AccordionSummary expandIcon={<Typography color="text.secondary">▾</Typography>}><Typography variant="overline">Advanced</Typography></AccordionSummary>
